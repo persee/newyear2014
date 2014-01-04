@@ -3,8 +3,189 @@
 <head>
 	<meta charset="UTF-8">
 	<title>easel test</title>
+	<script src="images/js/easeljs-0.7.1.min.js"></script>
 </head>
 <body>
+
+<canvas id="canvas"></canvas>
+<style>
+*{
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+#canvas{
+	width: 500px;
+	height: 500px;
+	border: 1px solid #999;
+}
+
+
+</style>
+<script>
+
+
+
+var canvas;
+var stage;
+var wrapper;
+var line;
+var line2;
+var strokeWidth = maxStrokeWidth = 50;
+var minStrokeWidth = 2;
+
+var newX = 0;
+var newY = 0;
+var oldX = 0;
+var oldY = 0;
+var speed = 0;
+
+function init(){
+
+	canvas = document.getElementById('canvas');
+	canvas.width = 500;
+	canvas.height = 500;
+
+	stage = new createjs.Stage(canvas);
+	//stage.width = canvas.width;
+	//stage.height = canvas.height;
+	stage.enableMouseOver(10);
+
+	wrapper = new createjs.Shape();
+	wrapper.graphics
+		.beginFill("#ffffff")
+		.drawRect(0,0,canvas.width,canvas.height)
+		.endFill();
+	stage.addChild(wrapper);
+
+	line = new createjs.Shape();
+	stage.addChild(line);
+
+	stage.update();
+
+	addEvent();
+
+	console.log("init")
+}
 	
+
+function downHandler(e){
+	console.log("start");
+	strokeWidth = maxStrokeWidth;
+
+	newX = oldX = e.stageX;
+	newY = oldY = e.stageY;
+
+	line.graphics
+		.setStrokeStyle(strokeWidth)
+		.beginStroke("#000")
+		.moveTo(newX, newY);
+
+	createRandomParticles(newX, newY);
+
+	stage.update();
+	e.addEventListener('mousemove', moveHandler);
+	e.addEventListener('mouseup', upHandler);
+}
+function moveHandler(e){
+	console.log("move");
+
+	newX = e.stageX;
+	newY = e.stageY;
+
+	speed = Math.sqrt(Math.pow(newX-oldX,2)+Math.pow(newY-oldY,2))/6;
+	if (speed < 0.3) speed = 0;
+
+
+	strokeWidth = ((strokeWidth-=speed) >= minStrokeWidth)
+					 ? strokeWidth : 0;
+
+	console.log(speed)
+
+	if (strokeWidth > 0) {
+		line.graphics
+			.setStrokeStyle(
+				strokeWidth,
+				'round',
+				'miter'
+			)
+			.moveTo(oldX, oldY)
+			.lineTo(newX, newY);
+	}
+
+	oldX = e.stageX;
+	oldY = e.stageY;
+		
+	stage.update();
+}
+function upHandler(e){
+
+	line.graphics.endStroke();
+
+	if (strokeWidth > 0){
+		createRandomDrops(e.stageX, e.stageY);
+	}
+
+	e.removeEventListener('mousemove', moveHandler);
+	e.removeEventListener('mouseup', upHandler);
+}
+function addEvent(){
+	stage.addEventListener('mousedown', downHandler);
+}
+
+function createRandomParticles(posx, posy){
+	var i=0,
+		l=Math.floor(Math.random()*15);
+	for(;i<l;i++){
+		window.setTimeout(function(){
+			var circle = new createjs.Shape();
+			circle.graphics
+				.beginFill('#000')
+				.drawCircle(
+					posx + Math.random()*100 - 50, 
+					posy + Math.random()*100 - 50,
+					Math.random()*5
+				).
+				endFill();
+			stage.addChild(circle);
+		},i*30);
+	}
+}
+
+function createRandomDrops(posx, posy){
+
+	var i = 0;
+	var l = Math.floor(Math.random()*100);
+	var dropWidth = maxDropWidth = Math.random()*5;
+	var drops = new createjs.Shape();
+	stage.addChild(drops);
+	drops.graphics.beginStroke('#000', 'round');
+		
+	//for(;i<l;i++){
+		var timer = window.setInterval(function(){
+			i++;
+			if (i >= l) {
+				clearInterval(timer);
+			} 
+			drops.graphics
+				.setStrokeStyle(dropWidth-=0.05)
+				.moveTo(posx, posy + i)
+				.lineTo(posx, posy + i + 1 );
+			stage.update();
+			if(dropWidth <= 0) {
+				drops.graphics.endStroke();
+				return;
+			}
+		},5);
+	//}
+	
+}
+
+
+init();
+
+
+
+</script>
 </body>
 </html>
