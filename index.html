@@ -8,6 +8,7 @@
 <body>
 
 <canvas id="canvas"></canvas>
+<input type="button" id="save" value="save">
 <style>
 *{
 	margin: 0;
@@ -15,16 +16,20 @@
 	border: 0;
 }
 #canvas{
+	display: block;
 	width: 500px;
 	height: 500px;
 	border: 1px solid #999;
 }
-
+#save{
+	padding:20px;
+	display: inline-block;
+}
 
 </style>
 <script>
 
-
+var button = document.getElementById("save");
 
 var canvas;
 var stage;
@@ -41,6 +46,7 @@ var oldY = 0;
 var speed = 0;
 
 function init(){
+
 
 	canvas = document.getElementById('canvas');
 	canvas.width = 500;
@@ -68,6 +74,15 @@ function init(){
 	console.log("init")
 }
 	
+function addEvent(){
+	stage.addEventListener('mousedown', downHandler);
+
+	button.addEventListener('click', function(){
+		//alert(canvas.toDataURL())
+		window.open(canvas.toDataURL(),"newwindow")
+	}, false);
+
+}
 
 function downHandler(e){
 	console.log("start");
@@ -129,9 +144,7 @@ function upHandler(e){
 	e.removeEventListener('mousemove', moveHandler);
 	e.removeEventListener('mouseup', upHandler);
 }
-function addEvent(){
-	stage.addEventListener('mousedown', downHandler);
-}
+
 
 function createRandomParticles(posx, posy){
 	var i=0,
@@ -182,7 +195,7 @@ function createRandomDrops(posx, posy){
 }
 
 
-init();
+window.onload = init;
 
 
 
