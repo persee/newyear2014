@@ -2,18 +2,32 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
+	<meta name="viewport" content="width=500, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">  
 	<title>easel test</title>
 	<script src="images/js/easeljs-0.7.1.min.js"></script>
 </head>
 <body>
 
-<canvas id="canvas"></canvas>
-<input type="button" id="save" value="save">
+<div id="wrapper">
+	<canvas id="canvas"></canvas>
+	<ul id="buttonArea">
+	<li><input type="button" id="save" value="save"></li>
+	<li><input type="button" id="record" value="record"></li>
+	<li><input type="button" id="stop" value="stop"></li>
+	<li><input type="button" id="play" value="play"></li>
+	<li><input type="button" id="clear" value="clear"></li>
+	</ul>
+</div>
+
 <style>
 *{
 	margin: 0;
 	padding: 0;
 	border: 0;
+}
+#wrapper {
+	display: block;
+	width: 502px;
 }
 #canvas{
 	display: block;
@@ -21,21 +35,53 @@
 	height: 500px;
 	border: 1px solid #999;
 }
-#save{
-	padding:20px;
-	display: inline-block;
+#buttonArea{
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+}
+#buttonArea li{
+	display: table-cell;
+	padding: 1px;
+}
+#buttonArea li input{
+	padding:20px 0;
+	width: 100%;
+	display: block;
+}
+@keyframes shake{
+	0% {-webkit-transform:translate(-2px, -2px);transform:translate(-2px, -2px)}
+	20% {-webkit-transform:translate(2px, 2px);transform:translate(2px, 2px)}
+	40% {-webkit-transform:translate(-2px, -6px);transform:translate(-2px, -6px)}
+	60% {-webkit-transform:translate(-8px, -4px);transform:translate(-8px, -4px)}
+	80% {-webkit-transform:translate(-2px, -2px);transform:translate(-2px, -2px)}
+	100% {-webkit-transform:none;transform:none}
+}
+@-webkit-keyframes shake{
+	0% {-webkit-transform:translate(-2px, -2px);transform:translate(-2px, -2px)}
+	20% {-webkit-transform:translate(2px, 2px);transform:translate(2px, 2px)}
+	40% {-webkit-transform:translate(-2px, -6px);transform:translate(-2px, -6px)}
+	60% {-webkit-transform:translate(-8px, -4px);transform:translate(-8px, -4px)}
+	80% {-webkit-transform:translate(-2px, -2px);transform:translate(-2px, -2px)}
+	100% {-webkit-transform:none;transform:none}
 }
 
 </style>
 <script>
 
-var button = document.getElementById("save");
+var htmldocument = document.getElementById("wrapper");
+
+var saveButton = document.getElementById("save");
+var recordButton = document.getElementById("record");
+var playButton = document.getElementById("play");
+var stopButton = document.getElementById("stop");
+var clearButton = document.getElementById("clear");
 
 var canvas;
 var stage;
 var wrapper;
 var line;
-var line2;
+var recordedline;
 var strokeWidth = maxStrokeWidth = 50;
 var minStrokeWidth = 2;
 
@@ -45,18 +91,50 @@ var oldX = 0;
 var oldY = 0;
 var speed = 0;
 
-function init(){
+var recordData = [];
+var isRecording = false;
 
+function init(){
 
 	canvas = document.getElementById('canvas');
 	canvas.width = 500;
 	canvas.height = 500;
 
 	stage = new createjs.Stage(canvas);
-	//stage.width = canvas.width;
-	//stage.height = canvas.height;
-	stage.enableMouseOver(10);
+	stage.enableMouseOver(50);
 
+	clearAll();
+
+	addEvent();
+
+}
+	
+function addEvent(){
+	stage.addEventListener('mousedown', downHandler);
+
+	saveButton.addEventListener('click', function(){
+		window.open(canvas.toDataURL(),"newwindow")
+	}, false);
+
+	recordButton.addEventListener('click', function(){
+		startRecording();
+	}, false);
+	stopButton.addEventListener('click', function(){
+		stopRecording();
+	}, false);
+	playButton.addEventListener('click', function(){
+		playRecording();
+	}, false);
+
+	clearButton.addEventListener('click', function(){
+		clearAll();
+	}, false);
+}
+
+function clearAll () {
+	stage.clear();
+	stage.removeAllChildren();
+	
 	wrapper = new createjs.Shape();
 	wrapper.graphics
 		.beginFill("#ffffff")
@@ -67,25 +145,11 @@ function init(){
 	line = new createjs.Shape();
 	stage.addChild(line);
 
-	stage.update();
-
-	addEvent();
-
-	console.log("init")
-}
-	
-function addEvent(){
-	stage.addEventListener('mousedown', downHandler);
-
-	button.addEventListener('click', function(){
-		//alert(canvas.toDataURL())
-		window.open(canvas.toDataURL(),"newwindow")
-	}, false);
-
+	recordedline = new createjs.Shape();
+	stage.addChild(recordedline);
 }
 
 function downHandler(e){
-	console.log("start");
 	strokeWidth = maxStrokeWidth;
 
 	newX = oldX = e.stageX;
@@ -93,17 +157,16 @@ function downHandler(e){
 
 	line.graphics
 		.setStrokeStyle(strokeWidth)
-		.beginStroke("#000")
+		.beginStroke('rgba(200,200,200,0.95)')
 		.moveTo(newX, newY);
 
-	createRandomParticles(newX, newY);
-
-	stage.update();
 	e.addEventListener('mousemove', moveHandler);
 	e.addEventListener('mouseup', upHandler);
+
+	setRecordData(newX, newY, strokeWidth, "startline");
+
 }
 function moveHandler(e){
-	console.log("move");
 
 	newX = e.stageX;
 	newY = e.stageY;
@@ -111,11 +174,8 @@ function moveHandler(e){
 	speed = Math.sqrt(Math.pow(newX-oldX,2)+Math.pow(newY-oldY,2))/6;
 	if (speed < 0.3) speed = 0;
 
-
 	strokeWidth = ((strokeWidth-=speed) >= minStrokeWidth)
 					 ? strokeWidth : 0;
-
-	console.log(speed)
 
 	if (strokeWidth > 0) {
 		line.graphics
@@ -130,36 +190,141 @@ function moveHandler(e){
 
 	oldX = e.stageX;
 	oldY = e.stageY;
-		
+
+	setRecordData(newX, newY, strokeWidth);
 	stage.update();
 }
 function upHandler(e){
 
-	line.graphics.endStroke();
+	newX = e.stageX;
+	newY = e.stageY;
 
-	if (strokeWidth > 0){
-		createRandomDrops(e.stageX, e.stageY);
-	}
+	line.graphics.endStroke();
 
 	e.removeEventListener('mousemove', moveHandler);
 	e.removeEventListener('mouseup', upHandler);
+
+	setRecordData(newX, newY, strokeWidth, "endline");
+
+	stage.update();
+
+}
+
+
+
+
+
+function setRecordData (posx, posy, stw, line) {
+
+	if (isRecording) {
+		recordData.push(JSON.stringify({
+			'posx':posx,
+			'posy':posy,
+			'stw':stw,
+			'line':line
+		}));
+
+	}
+}
+
+function startRecording () {
+	isRecording = true;
+	recordData = [];
+}
+
+function stopRecording () {
+	localStorage.setItem( 'test', recordData.toString() );
+	isRecording = false;
+}
+
+function playRecording () {
+
+	var rd = localStorage.getItem('test')
+		.split("\},")
+		.join("\}")
+		.split("\}");
+
+	var i=0,
+		rdleng = rd.length,
+		rdoldX,
+		rdoldY,
+		rdnewX,
+		rdnewY;
+	
+	clearAll();
+
+	var timer = setInterval(function(){
+
+
+		if (!rd[i]){
+			clearInterval(timer);
+			return;
+		}
+
+		var tmp = (rd[i] !== undefined) 
+			? JSON.parse(rd[i]+"\}") : {};
+		
+		if (tmp.line && tmp.line == "startline"){
+
+			rdnewX = rdoldX = tmp.posx;
+			rdnewY = rdoldY = tmp.posy;
+
+			recordedline.graphics
+					.setStrokeStyle(strokeWidth)
+					.beginStroke('rgba(0,0,0,0.95)')
+					.moveTo(rdnewX, rdnewY);
+
+				createRandomParticles(rdnewX, rdnewY);
+
+
+		shake();
+
+		} else if(tmp.line && tmp.line == "endline"){
+			rdnewX = tmp.posx;
+			rdnewY = tmp.posy;
+			recordedline.graphics.endStroke();
+			if (tmp.stw > 0){
+				createRandomDrops(rdnewX,rdnewY);
+			}
+		} else {
+			rdnewX = tmp.posx;
+			rdnewY = tmp.posy;
+			if (tmp.stw > 0) {
+				recordedline.graphics
+					.setStrokeStyle(
+						tmp.stw,
+						'round',
+						'miter'
+					)
+					.moveTo(rdoldX, rdoldY)
+					.lineTo(rdnewX, rdnewY);
+			}
+			rdoldX = tmp.posx;
+			rdoldY = tmp.posy;
+
+		}
+		stage.update();
+		i++;
+	}, 20)
 }
 
 
 function createRandomParticles(posx, posy){
 	var i=0,
-		l=Math.floor(Math.random()*15);
+		l=Math.floor(Math.random()*15) ;
 	for(;i<l;i++){
 		window.setTimeout(function(){
 			var circle = new createjs.Shape();
 			circle.graphics
-				.beginFill('#000')
+				.beginFill('rgba(0,0,0,0.95)')
 				.drawCircle(
 					posx + Math.random()*100 - 50, 
 					posy + Math.random()*100 - 50,
 					Math.random()*5
-				).
-				endFill();
+				)
+				.endFill();
+
+			circle.alpha = Math.random()*0.3+ 0.7;
 			stage.addChild(circle);
 		},i*30);
 	}
@@ -172,27 +337,47 @@ function createRandomDrops(posx, posy){
 	var dropWidth = maxDropWidth = Math.random()*5;
 	var drops = new createjs.Shape();
 	stage.addChild(drops);
-	drops.graphics.beginStroke('#000', 'round');
+	drops.graphics.beginStroke('rgba(0,0,0,0.95)', 'round');
 		
-	//for(;i<l;i++){
-		var timer = window.setInterval(function(){
-			i++;
-			if (i >= l) {
-				clearInterval(timer);
-			} 
-			drops.graphics
-				.setStrokeStyle(dropWidth-=0.05)
-				.moveTo(posx, posy + i)
-				.lineTo(posx, posy + i + 1 );
-			stage.update();
-			if(dropWidth <= 0) {
-				drops.graphics.endStroke();
-				return;
-			}
-		},5);
-	//}
+	var timer = window.setInterval(function(){
+		i++;
+		if (i >= l) {
+			clearInterval(timer);
+		} 
+		drops.graphics
+			.setStrokeStyle(dropWidth-=0.05)
+			.moveTo(posx, posy + i)
+			.lineTo(posx, posy + i + 1 );
+		stage.update();
+		if(dropWidth <= 0) {
+			drops.graphics.endStroke();
+			return;
+		}
+	},5);
 	
 }
+
+function shake() {
+	console.log("shake");
+
+	htmldocument.removeAttribute("style");
+	
+	htmldocument.addEventListener("webkitAnimationEnd",function(){
+		console.log(1);
+		htmldocument.removeAttribute("style");
+		htmldocument.removeEventListener("webkitanimationend",arguments.callee, false);
+	}, false);
+	htmldocument.addEventListener("animationEnd",function(){
+		console.log(2);
+		htmldocument.removeAttribute("style");
+		htmldocument.removeEventListener("animationend",arguments.callee, false);
+
+	}, false);
+
+	htmldocument.setAttribute("style", "-webkit-animation:shake 0.2s linear;animation:shake 0.2s linear;");
+	
+}
+
 
 
 window.onload = init;
