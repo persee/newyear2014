@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<meta name="viewport" content="width=500, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">  
+	<meta name="viewport" content="width=502, user-scalable=0">  
 	<title>easel test</title>
-	<script src="images/js/easeljs-0.7.1.min.js"></script>
+	<script src="http://code.createjs.com/easeljs-0.7.1.min.js"></script>
 </head>
 <body>
 
@@ -101,6 +101,12 @@ function init(){
 	canvas.height = 500;
 
 	stage = new createjs.Stage(canvas);
+
+	if (createjs.Touch.isSupported()) {
+	  createjs.Touch.enable(stage);
+	}
+
+
 	stage.enableMouseOver(50);
 
 	clearAll();
@@ -255,7 +261,6 @@ function playRecording () {
 
 	var timer = setInterval(function(){
 
-
 		if (!rd[i]){
 			clearInterval(timer);
 			return;
@@ -265,19 +270,15 @@ function playRecording () {
 			? JSON.parse(rd[i]+"\}") : {};
 		
 		if (tmp.line && tmp.line == "startline"){
-
 			rdnewX = rdoldX = tmp.posx;
 			rdnewY = rdoldY = tmp.posy;
-
 			recordedline.graphics
 					.setStrokeStyle(strokeWidth)
 					.beginStroke('rgba(0,0,0,0.95)')
 					.moveTo(rdnewX, rdnewY);
 
-				createRandomParticles(rdnewX, rdnewY);
-
-
-		shake();
+			createRandomParticles(rdnewX, rdnewY);
+			shake();
 
 		} else if(tmp.line && tmp.line == "endline"){
 			rdnewX = tmp.posx;
@@ -358,17 +359,12 @@ function createRandomDrops(posx, posy){
 }
 
 function shake() {
-	console.log("shake");
-
 	htmldocument.removeAttribute("style");
-	
 	htmldocument.addEventListener("webkitAnimationEnd",function(){
-		console.log(1);
 		htmldocument.removeAttribute("style");
 		htmldocument.removeEventListener("webkitanimationend",arguments.callee, false);
 	}, false);
 	htmldocument.addEventListener("animationEnd",function(){
-		console.log(2);
 		htmldocument.removeAttribute("style");
 		htmldocument.removeEventListener("animationend",arguments.callee, false);
 
